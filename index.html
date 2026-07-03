@@ -102,6 +102,8 @@ textarea.sb-input{min-height:120px;resize:vertical;line-height:1.4;}
   background-image:radial-gradient(circle at 1px 1px, #d8d0dc 1.4px, transparent 0);
   background-size:20px 20px;background-color:#ece7ef;}
 #stage{width:960px;height:540px;transform-origin:center center;box-shadow:0 30px 80px rgba(40,10,45,.28);border-radius:14px;overflow:hidden;background:#fff;flex:none;}
+.mobile-toggle{display:none;}
+#sidebarOverlay{display:none;}
 
 /* SLIDE BASE */
 .slide{width:960px;height:540px;position:relative;overflow:hidden;font-family:'Montserrat',sans-serif;}
@@ -342,6 +344,28 @@ body.exporting .ctrl-row{display:none!important;}
 .tpl-playful .bullets li .dot{box-shadow:0 0 0 4px rgba(255,255,255,.22);}
 .tpl-playful .agenda-list li::before{box-shadow:0 0 0 4px rgba(255,255,255,.3);}
 .tpl-playful .slide-closing .badge-wrap{border-radius:50%;box-shadow:0 0 0 10px rgba(255,255,255,.08);}
+
+/* ============================================================ RESPONSIVE / MOBILE =====
+   Below the breakpoint the 328px sidebar would eat almost the entire phone screen, leaving
+   no room to see the slide — so it becomes an off-canvas drawer (hidden by default, opened
+   via the hamburger button in the toolbar) instead of a permanent flex column. The workspace
+   always gets full width, and the existing fitStage() JS (which scales the fixed 960×540
+   stage to whatever space #stageWrap has) needs no changes — it already adapts once the
+   sidebar is out of the flex flow. */
+@media (max-width:880px){
+  .mobile-toggle{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:none;background:#f3ecf5;border-radius:8px;font-size:18px;cursor:pointer;color:var(--dark);flex:none;}
+  #toolbar{padding:0 14px;gap:10px;justify-content:flex-start;}
+  #toolbar .crumb:last-child{display:none;}
+  #toolbar .crumb:nth-child(2){flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #sidebar{position:fixed;top:0;left:0;bottom:0;width:86vw;max-width:340px;z-index:210;
+    transform:translateX(-100%);transition:transform .25s ease;box-shadow:10px 0 34px rgba(20,5,20,.35);}
+  #app.sidebar-open #sidebar{transform:translateX(0);}
+  #sidebarOverlay{display:block;position:fixed;inset:0;background:rgba(20,5,20,.45);z-index:190;
+    opacity:0;pointer-events:none;transition:opacity .2s ease;}
+  #app.sidebar-open #sidebarOverlay{opacity:1;pointer-events:auto;}
+  #workspace{width:100%;}
+  #stageWrap{padding:10px;}
+}
 </style>
 </head>
 <body>
@@ -417,9 +441,11 @@ body.exporting .ctrl-row{display:none!important;}
       <button class="sb-btn sb-btn-primary" id="btnExport" style="padding:13px 12px;font-size:14px;">⭳ Завантажити PDF</button>
     </div>
   </aside>
+  <div id="sidebarOverlay"></div>
 
   <main id="workspace">
     <div id="toolbar">
+      <button type="button" id="btnSidebarToggle" class="mobile-toggle" aria-label="Меню">☰</button>
       <div class="crumb" id="crumb">—</div>
       <div class="crumb"><span>960 × 540 · 16:9</span></div>
     </div>
@@ -1896,6 +1922,7 @@ function renderSidebar(){
     li.addEventListener('click', function(e){
       if(e.target.closest('button')) return;
       selectSlide(s.id);
+      closeMobileSidebar(); /* reveal the picked slide immediately on phones; a no-op on desktop */
     });
     li.querySelector('.btn-eye').addEventListener('click', function(e){
       e.stopPropagation(); s.visible = !s.visible; renderSidebar();
@@ -2344,8 +2371,25 @@ function exportPDF(){
 }
 
 /* ---------------------------------------------------------- WIRE UI */
+function closeMobileSidebar(){
+  var appEl = document.getElementById('app');
+  if(appEl) appEl.classList.remove('sidebar-open');
+}
 function wireUI(){
   document.getElementById('brandMark').innerHTML = LOGO_BADGE_PURPLE;
+
+  /* Mobile off-canvas sidebar: hamburger opens it, tapping the overlay closes it. On
+     desktop these elements are CSS-hidden (.mobile-toggle{display:none} outside the
+     breakpoint) so this wiring is simply inert there. */
+  var btnSidebarToggle = document.getElementById('btnSidebarToggle');
+  var sidebarOverlay = document.getElementById('sidebarOverlay');
+  var appEl = document.getElementById('app');
+  if(btnSidebarToggle && appEl){
+    btnSidebarToggle.addEventListener('click', function(){ appEl.classList.toggle('sidebar-open'); });
+  }
+  if(sidebarOverlay){
+    sidebarOverlay.addEventListener('click', closeMobileSidebar);
+  }
 
   clientInput.addEventListener('input', function(){
     state.client = clientInput.value;
